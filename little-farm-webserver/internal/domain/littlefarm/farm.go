@@ -99,6 +99,26 @@ func (farm *Farm) HarvestCorn(cmd HarvestCornCmd) error {
 	return nil
 }
 
+func (farm *Farm) HarvestGrass(cmd HarvestGrassCmd) error {
+	grass, found := farm.findGrassByID(cmd.GrassID)
+	if !found {
+		return ErrGrassNotFound
+	}
+	produced, err := grass.Harvest()
+	if err != nil {
+		return err
+	}
+	evt := GrassHarvestedEvt{
+		FarmID:    cmd.FarmID,
+		GrassID:   cmd.GrassID,
+		Produced:  produced,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.applyGrassHarvestedEvt(evt)
+	farm.Record(evt)
+	return nil
+}
+
 func (farm *Farm) findCornByID(id domain.ID) (Corn, bool) {
 	for _, e := range farm.activeElements {
 		if e.ID().Equals(id) {
@@ -110,6 +130,19 @@ func (farm *Farm) findCornByID(id domain.ID) (Corn, bool) {
 		}
 	}
 	return Corn{}, false
+}
+
+func (farm *Farm) findGrassByID(id domain.ID) (Grass, bool) {
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(id) {
+			g, isGrass := e.(*Grass)
+			if !isGrass {
+				return Grass{}, false
+			}
+			return *g, true
+		}
+	}
+	return Grass{}, false
 }
 
 func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
@@ -147,5 +180,19 @@ func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
 		}
 	}
 	farm.resources.Corn += evt.Produced
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyGrassHarvestedEvt(evt GrassHarvestedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.GrassID) {
+			farm.activeElements = append(
+				farm.activeElements[:i],
+				farm.activeElements[i+1:]...,
+			)
+			break
+		}
+	}
+	farm.resources.Seeds += evt.Produced
 	farm.updatedAt = evt.Timestamp
 }
