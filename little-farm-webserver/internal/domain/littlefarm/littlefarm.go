@@ -1,9 +1,16 @@
 package littlefarm
 
 import (
+	"fmt"
 	"time"
 
+	"little-farm-webserver/pkg/apperr"
 	"little-farm-webserver/pkg/domain"
+)
+
+var (
+	ErrInvalidMapWidth  = fmt.Errorf("%w: invalid map width", apperr.ErrValidation)
+	ErrInvalidMapHeight = fmt.Errorf("%w: invalid map height", apperr.ErrValidation)
 )
 
 type CreateFarmCmd struct {

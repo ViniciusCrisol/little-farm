@@ -1,32 +1,23 @@
 package littlefarm
 
-import (
-	"time"
-
-	"little-farm-webserver/pkg/domain"
-)
+import "little-farm-webserver/pkg/domain"
 
 type Grass struct {
 	id        domain.ID
 	xPosition int
 	yPosition int
 	activeFor int
-	createdAt time.Time
-	updatedAt time.Time
 }
 
 func NewGrass(
 	id domain.ID,
 	xPosition int,
 	yPosition int,
-	timestamp time.Time,
 ) Grass {
 	return Grass{
 		id:        id,
 		xPosition: xPosition,
 		yPosition: yPosition,
-		createdAt: timestamp,
-		updatedAt: timestamp,
 	}
 }
 
@@ -60,12 +51,4 @@ func (grass *Grass) YPosition() int {
 
 func (grass *Grass) AdvanceOneSecond() {
 	grass.activeFor++
-}
-
-func (grass *Grass) CreatedAt() time.Time {
-	return grass.createdAt
-}
-
-func (grass *Grass) UpdatedAt() time.Time {
-	return grass.updatedAt
 }

@@ -1,9 +1,9 @@
 package littlefarm
 
 import (
-	"errors"
-	"little-farm-webserver/pkg/domain"
 	"time"
+
+	"little-farm-webserver/pkg/domain"
 )
 
 type Resources struct {
@@ -18,22 +18,19 @@ type ActiveElement interface {
 	XPosition() int
 	YPosition() int
 	AdvanceOneSecond()
-	CreatedAt() time.Time
-	UpdatedAt() time.Time
 }
 
 type PassiveElement interface {
 	ID() domain.ID
 	Kind() string
 	AdvanceOneSecond()
-	CreatedAt() time.Time
-	UpdatedAt() time.Time
 }
 
 type Farm struct {
 	domain.AggregateRoot
 	mapWidth        int
 	mapHeight       int
+	activeFor       int
 	resources       Resources
 	activeElements  []ActiveElement
 	passiveElements []ActiveElement
@@ -43,16 +40,16 @@ type Farm struct {
 
 func NewFarm(cmd CreateFarmCmd) (Farm, error) {
 	if cmd.MapWidth < 4 {
-		return Farm{}, errors.New("validation err: invalid map width (move it to apperr)")
+		return Farm{}, ErrInvalidMapWidth
 	}
 	if cmd.MapHeight < 4 {
-		return Farm{}, errors.New("validation err: invalid map height (move it to apperr)")
+		return Farm{}, ErrInvalidMapHeight
 	}
 
-	corn0_0 := NewCorn(domain.GenerateID(), 0, 0, cmd.Timestamp)
-	corn1_0 := NewCorn(domain.GenerateID(), 0, 0, cmd.Timestamp)
-	grass0_1 := NewGrass(domain.GenerateID(), 0, 0, cmd.Timestamp)
-	grass1_1 := NewGrass(domain.GenerateID(), 0, 0, cmd.Timestamp)
+	corn0_0 := NewCorn(domain.GenerateID(), 0, 0)
+	corn1_0 := NewCorn(domain.GenerateID(), 0, 0)
+	grass0_1 := NewGrass(domain.GenerateID(), 0, 0)
+	grass1_1 := NewGrass(domain.GenerateID(), 0, 0)
 
 	var farm Farm
 	evt := FarmCreatedEvt{
@@ -72,6 +69,16 @@ func NewFarm(cmd CreateFarmCmd) (Farm, error) {
 	return farm, nil
 }
 
+func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
+	evt := OneSecondAdvancedEvt{
+		FarmID:    cmd.FarmID,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.applyOneSecondAdvancedEvt(evt)
+	farm.Record(evt)
+	return nil
+}
+
 func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
 	farm.AggregateRoot = domain.NewAggregateRoot(evt.FarmID)
 	farm.mapWidth = evt.MapWidth
@@ -80,5 +87,18 @@ func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
 	farm.activeElements = evt.ActiveElements
 	farm.passiveElements = evt.PassiveElements
 	farm.createdAt = evt.Timestamp
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyOneSecondAdvancedEvt(evt OneSecondAdvancedEvt) {
+	farm.activeFor++
+	for i, e := range farm.activeElements {
+		e.AdvanceOneSecond()
+		farm.activeElements[i] = e
+	}
+	for i, e := range farm.passiveElements {
+		e.AdvanceOneSecond()
+		farm.passiveElements[i] = e
+	}
 	farm.updatedAt = evt.Timestamp
 }
