@@ -1,6 +1,11 @@
 package littlefarm
 
-import "little-farm-webserver/pkg/domain"
+import (
+	"fmt"
+	"math/rand/v2"
+
+	"little-farm-webserver/pkg/domain"
+)
 
 type Corn struct {
 	id        domain.ID
@@ -26,13 +31,17 @@ func (corn *Corn) ID() domain.ID {
 }
 
 func (corn *Corn) Kind() string {
+	return fmt.Sprintf("corn:%d", corn.Size())
+}
+
+func (corn *Corn) Size() int {
 	if corn.activeFor < 5 {
-		return "corn:0"
+		return 0
 	}
 	if corn.activeFor < 10 {
-		return "corn:1"
+		return 1
 	}
-	return "corn:2"
+	return 2
 }
 
 func (corn *Corn) XPosition() int {
@@ -45,4 +54,14 @@ func (corn *Corn) YPosition() int {
 
 func (corn *Corn) AdvanceOneSecond() {
 	corn.activeFor++
+}
+
+func (corn *Corn) Harvest() (int, error) {
+	size := corn.Size()
+	if size == 0 {
+		return 0, ErrCornNotReady
+	}
+	produced := size
+	produced += rand.IntN(size) + 1
+	return produced, nil
 }

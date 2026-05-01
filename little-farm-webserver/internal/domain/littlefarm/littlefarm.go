@@ -11,6 +11,9 @@ import (
 var (
 	ErrInvalidMapWidth  = fmt.Errorf("%w: invalid map width", apperr.ErrValidation)
 	ErrInvalidMapHeight = fmt.Errorf("%w: invalid map height", apperr.ErrValidation)
+
+	ErrCornNotFound = fmt.Errorf("%w: corn not found", apperr.ErrValidation)
+	ErrCornNotReady = fmt.Errorf("%w: corn not ready", apperr.ErrValidation)
 )
 
 type CreateFarmCmd struct {

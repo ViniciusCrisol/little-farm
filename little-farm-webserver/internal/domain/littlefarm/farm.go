@@ -79,6 +79,39 @@ func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
 	return nil
 }
 
+func (farm *Farm) HarvestCorn(cmd HarvestCornCmd) error {
+	corn, found := farm.findCornByID(cmd.CornID)
+	if !found {
+		return ErrCornNotFound
+	}
+	produced, err := corn.Harvest()
+	if err != nil {
+		return err
+	}
+	evt := CornHarvestedEvt{
+		FarmID:    cmd.FarmID,
+		CornID:    cmd.CornID,
+		Produced:  produced,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.applyCornHarvestedEvt(evt)
+	farm.Record(evt)
+	return nil
+}
+
+func (farm *Farm) findCornByID(id domain.ID) (Corn, bool) {
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(id) {
+			c, isCorn := e.(*Corn)
+			if !isCorn {
+				return Corn{}, false
+			}
+			return *c, true
+		}
+	}
+	return Corn{}, false
+}
+
 func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
 	farm.AggregateRoot = domain.NewAggregateRoot(evt.FarmID)
 	farm.mapWidth = evt.MapWidth
@@ -100,5 +133,19 @@ func (farm *Farm) applyOneSecondAdvancedEvt(evt OneSecondAdvancedEvt) {
 		e.AdvanceOneSecond()
 		farm.passiveElements[i] = e
 	}
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.CornID) {
+			farm.activeElements = append(
+				farm.activeElements[:i],
+				farm.activeElements[i+1:]...,
+			)
+			break
+		}
+	}
+	farm.resources.Corn += evt.Produced
 	farm.updatedAt = evt.Timestamp
 }
