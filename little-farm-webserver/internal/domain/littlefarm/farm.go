@@ -47,9 +47,9 @@ func NewFarm(cmd CreateFarmCmd) (Farm, error) {
 	}
 
 	corn0_0 := NewCorn(domain.GenerateID(), 0, 0)
-	corn1_0 := NewCorn(domain.GenerateID(), 0, 0)
-	grass0_1 := NewGrass(domain.GenerateID(), 0, 0)
-	grass1_1 := NewGrass(domain.GenerateID(), 0, 0)
+	corn1_0 := NewCorn(domain.GenerateID(), 1, 0)
+	grass0_1 := NewGrass(domain.GenerateID(), 0, 1)
+	grass1_1 := NewGrass(domain.GenerateID(), 1, 1)
 
 	var farm Farm
 	evt := FarmCreatedEvt{

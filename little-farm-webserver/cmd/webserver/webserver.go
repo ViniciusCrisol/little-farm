@@ -1,28 +1,22 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"time"
+	"net/http"
 
-	"little-farm-webserver/internal/domain/littlefarm"
-	"little-farm-webserver/pkg/domain"
+	"little-farm-webserver/internal/infrastructure/controller"
+	"little-farm-webserver/internal/infrastructure/persistence"
 )
 
 func main() {
-	farm, err := littlefarm.NewFarm(littlefarm.CreateFarmCmd{
-		FarmID:    domain.GenerateID(),
-		MapWidth:  16,
-		MapHeight: 16,
-		Timestamp: time.Now(),
-	})
-	if err != nil {
-		panic(err)
-	}
+	dao := persistence.NewInMemoryFarmDAO()
+	controller := controller.NewFarmController(dao)
 
-	j, err := json.Marshal(farm.UncommittedEvents())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(j))
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /farms", controller.CreateFarm)
+	mux.HandleFunc("GET /farms/{farm_id}", controller.FindFarm)
+	mux.HandleFunc("POST /farms/{farm_id}/advance-one-second", controller.AdvanceOneSecond)
+	mux.HandleFunc("POST /farms/{farm_id}/corn/{corn_id}/harvest", controller.HarvestCorn)
+	mux.HandleFunc("POST /farms/{farm_id}/grass/{grass_id}/harvest", controller.HarvestGrass)
+
+	(&http.Server{Addr: ":8080", Handler: mux}).ListenAndServe()
 }

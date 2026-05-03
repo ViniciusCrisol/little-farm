@@ -52,6 +52,57 @@ func (controller *FarmController) CreateFarm(response http.ResponseWriter, reque
 	web.RespondWithJSON(response, http.StatusCreated, FarmToFarmOutputDTO(farm))
 }
 
+func (controller *FarmController) FindFarm(response http.ResponseWriter, request *http.Request) {
+	farmID, err := domain.NewID(request.PathValue("farm_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
+		return
+	}
+
+	farm, found, err := controller.farmDAO.Find(farmID)
+	if err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if !found {
+		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
+		return
+	}
+
+	web.RespondWithJSON(response, http.StatusOK, FarmToFarmOutputDTO(farm))
+}
+
+func (controller *FarmController) AdvanceOneSecond(response http.ResponseWriter, request *http.Request) {
+	farmID, err := domain.NewID(request.PathValue("farm_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
+		return
+	}
+
+	farm, found, err := controller.farmDAO.Find(farmID)
+	if err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if !found {
+		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
+		return
+	}
+	if err = farm.AdvanceOneSecond(littlefarm.AdvanceOneSecondCmd{
+		FarmID:    farmID,
+		Timestamp: time.Now(),
+	}); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if err = controller.farmDAO.Save(farm); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+
+	web.RespondWithJSON(response, http.StatusCreated, FarmToFarmOutputDTO(farm))
+}
+
 func (controller *FarmController) HarvestCorn(response http.ResponseWriter, request *http.Request) {
 	farmID, err := domain.NewID(request.PathValue("farm_id"))
 	if err != nil {
@@ -124,55 +175,4 @@ func (controller *FarmController) HarvestGrass(response http.ResponseWriter, req
 	}
 
 	web.RespondWithJSON(response, http.StatusCreated, FarmToFarmOutputDTO(farm))
-}
-
-func (controller *FarmController) AdvanceOneSecond(response http.ResponseWriter, request *http.Request) {
-	farmID, err := domain.NewID(request.PathValue("farm_id"))
-	if err != nil {
-		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
-		return
-	}
-
-	farm, found, err := controller.farmDAO.Find(farmID)
-	if err != nil {
-		web.RespondWithError(response, err)
-		return
-	}
-	if !found {
-		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
-		return
-	}
-	if err = farm.AdvanceOneSecond(littlefarm.AdvanceOneSecondCmd{
-		FarmID:    farmID,
-		Timestamp: time.Now(),
-	}); err != nil {
-		web.RespondWithError(response, err)
-		return
-	}
-	if err = controller.farmDAO.Save(farm); err != nil {
-		web.RespondWithError(response, err)
-		return
-	}
-
-	web.RespondWithJSON(response, http.StatusCreated, FarmToFarmOutputDTO(farm))
-}
-
-func (controller *FarmController) FindFarm(response http.ResponseWriter, request *http.Request) {
-	farmID, err := domain.NewID(request.PathValue("farm_id"))
-	if err != nil {
-		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
-		return
-	}
-
-	farm, found, err := controller.farmDAO.Find(farmID)
-	if err != nil {
-		web.RespondWithError(response, err)
-		return
-	}
-	if !found {
-		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
-		return
-	}
-
-	web.RespondWithJSON(response, http.StatusOK, FarmToFarmOutputDTO(farm))
 }
