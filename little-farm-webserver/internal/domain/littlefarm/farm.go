@@ -69,16 +69,6 @@ func NewFarm(cmd CreateFarmCmd) (Farm, error) {
 	return farm, nil
 }
 
-func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
-	evt := OneSecondAdvancedEvt{
-		FarmID:    cmd.FarmID,
-		Timestamp: cmd.Timestamp,
-	}
-	farm.applyOneSecondAdvancedEvt(evt)
-	farm.Record(evt)
-	return nil
-}
-
 func (farm *Farm) HarvestCorn(cmd HarvestCornCmd) error {
 	corn, found := farm.findCornByID(cmd.CornID)
 	if !found {
@@ -115,6 +105,16 @@ func (farm *Farm) HarvestGrass(cmd HarvestGrassCmd) error {
 		Timestamp: cmd.Timestamp,
 	}
 	farm.applyGrassHarvestedEvt(evt)
+	farm.Record(evt)
+	return nil
+}
+
+func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
+	evt := OneSecondAdvancedEvt{
+		FarmID:    cmd.FarmID,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.applyOneSecondAdvancedEvt(evt)
 	farm.Record(evt)
 	return nil
 }
@@ -156,19 +156,6 @@ func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
 	farm.updatedAt = evt.Timestamp
 }
 
-func (farm *Farm) applyOneSecondAdvancedEvt(evt OneSecondAdvancedEvt) {
-	farm.activeFor++
-	for i, e := range farm.activeElements {
-		e.AdvanceOneSecond()
-		farm.activeElements[i] = e
-	}
-	for i, e := range farm.passiveElements {
-		e.AdvanceOneSecond()
-		farm.passiveElements[i] = e
-	}
-	farm.updatedAt = evt.Timestamp
-}
-
 func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
 	for i, e := range farm.activeElements {
 		if e.ID().Equals(evt.CornID) {
@@ -195,4 +182,49 @@ func (farm *Farm) applyGrassHarvestedEvt(evt GrassHarvestedEvt) {
 	}
 	farm.resources.Seeds += evt.Produced
 	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyOneSecondAdvancedEvt(evt OneSecondAdvancedEvt) {
+	farm.activeFor++
+	for i, e := range farm.activeElements {
+		e.AdvanceOneSecond()
+		farm.activeElements[i] = e
+	}
+	for i, e := range farm.passiveElements {
+		e.AdvanceOneSecond()
+		farm.passiveElements[i] = e
+	}
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) MapWidth() int {
+	return farm.mapWidth
+}
+
+func (farm *Farm) MapHeight() int {
+	return farm.mapHeight
+}
+
+func (farm *Farm) ActiveFor() int {
+	return farm.activeFor
+}
+
+func (farm *Farm) Resources() Resources {
+	return farm.resources
+}
+
+func (farm *Farm) ActiveElements() []ActiveElement {
+	return farm.activeElements
+}
+
+func (farm *Farm) PassiveElements() []ActiveElement {
+	return farm.passiveElements
+}
+
+func (farm *Farm) CreatedAt() time.Time {
+	return farm.createdAt
+}
+
+func (farm *Farm) UpdatedAt() time.Time {
+	return farm.updatedAt
 }

@@ -263,3 +263,123 @@ func TestFarm_HarvestGrass(t *testing.T) {
 		assert.True(t, isGrassHarvestedEvt)
 	})
 }
+
+func TestFarm_MapWidth(t *testing.T) {
+	t.Run("It should return the map width set during creation", func(t *testing.T) {
+		farm, err := NewFarm(CreateFarmCmd{
+			FarmID:    domain.GenerateID(),
+			MapWidth:  7,
+			MapHeight: 4,
+			Timestamp: time.Now(),
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 7, farm.MapWidth())
+	})
+}
+
+func TestFarm_MapHeight(t *testing.T) {
+	t.Run("It should return the map height set during creation", func(t *testing.T) {
+		farm, err := NewFarm(CreateFarmCmd{
+			FarmID:    domain.GenerateID(),
+			MapWidth:  4,
+			MapHeight: 9,
+			Timestamp: time.Now(),
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 9, farm.MapHeight())
+	})
+}
+
+func TestFarm_ActiveFor(t *testing.T) {
+	t.Run("It should return 0 when the farm has just been created", func(t *testing.T) {
+		farm := newValidFarm(t)
+		assert.Equal(t, 0, farm.ActiveFor())
+	})
+
+	t.Run("It should return the number of seconds advanced", func(t *testing.T) {
+		farm := newValidFarm(t)
+		now := time.Now()
+		farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		assert.Equal(t, 3, farm.ActiveFor())
+	})
+}
+
+func TestFarm_Resources(t *testing.T) {
+	t.Run("It should return empty resources when the farm has just been created", func(t *testing.T) {
+		farm := newValidFarm(t)
+		assert.Equal(t, Resources{}, farm.Resources())
+	})
+
+	t.Run("It should return updated corn resources after harvesting corn", func(t *testing.T) {
+		farm := newValidFarm(t)
+		cornID := cornIDFromFarm(farm)
+		now := time.Now()
+		for i := 0; i < 5; i++ {
+			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		}
+		farm.HarvestCorn(HarvestCornCmd{FarmID: farm.ID(), CornID: cornID, Timestamp: now})
+		assert.True(t, farm.Resources().Corn > 0)
+	})
+}
+
+func TestFarm_ActiveElements(t *testing.T) {
+	t.Run("It should return 4 active elements when the farm has just been created", func(t *testing.T) {
+		farm := newValidFarm(t)
+		assert.Equal(t, 4, len(farm.ActiveElements()))
+	})
+
+	t.Run("It should return one less active element after harvesting corn", func(t *testing.T) {
+		farm := newValidFarm(t)
+		cornID := cornIDFromFarm(farm)
+		now := time.Now()
+		for i := 0; i < 5; i++ {
+			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		}
+		farm.HarvestCorn(HarvestCornCmd{FarmID: farm.ID(), CornID: cornID, Timestamp: now})
+		assert.Equal(t, 3, len(farm.ActiveElements()))
+	})
+}
+
+func TestFarm_PassiveElements(t *testing.T) {
+	t.Run("It should return an empty slice when the farm has just been created", func(t *testing.T) {
+		farm := newValidFarm(t)
+		assert.Equal(t, 0, len(farm.PassiveElements()))
+	})
+}
+
+func TestFarm_CreatedAt(t *testing.T) {
+	t.Run("It should return the timestamp provided during creation", func(t *testing.T) {
+		now := time.Now()
+		farm, err := NewFarm(CreateFarmCmd{
+			FarmID:    domain.GenerateID(),
+			MapWidth:  4,
+			MapHeight: 4,
+			Timestamp: now,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, now, farm.CreatedAt())
+	})
+}
+
+func TestFarm_UpdatedAt(t *testing.T) {
+	t.Run("It should equal CreatedAt when the farm has just been created", func(t *testing.T) {
+		now := time.Now()
+		farm, err := NewFarm(CreateFarmCmd{
+			FarmID:    domain.GenerateID(),
+			MapWidth:  4,
+			MapHeight: 4,
+			Timestamp: now,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, farm.CreatedAt(), farm.UpdatedAt())
+	})
+
+	t.Run("It should return the timestamp of the last advance when time is advanced", func(t *testing.T) {
+		farm := newValidFarm(t)
+		later := time.Now().Add(10 * time.Second)
+		farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: later})
+		assert.Equal(t, later, farm.UpdatedAt())
+	})
+}
