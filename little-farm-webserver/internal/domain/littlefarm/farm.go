@@ -1,6 +1,8 @@
 package littlefarm
 
 import (
+	"fmt"
+	"slices"
 	"time"
 
 	"little-farm-webserver/pkg/domain"
@@ -46,27 +48,51 @@ func NewFarm(cmd CreateFarmCmd) (Farm, error) {
 		return Farm{}, ErrInvalidMapHeight
 	}
 
-	corn0_0 := NewCorn(domain.GenerateID(), 0, 0)
-	corn1_0 := NewCorn(domain.GenerateID(), 1, 0)
-	grass0_1 := NewGrass(domain.GenerateID(), 0, 1)
-	grass1_1 := NewGrass(domain.GenerateID(), 1, 1)
+	activeElements := generateInitialActiveElements(cmd.MapWidth, cmd.MapHeight)
 
 	var farm Farm
 	evt := FarmCreatedEvt{
-		FarmID:    cmd.FarmID,
-		MapWidth:  cmd.MapWidth,
-		MapHeight: cmd.MapHeight,
-		Resources: Resources{},
-		ActiveElements: []ActiveElement{
-			&corn0_0, &corn1_0,
-			&grass0_1, &grass1_1,
-		},
+		FarmID:          cmd.FarmID,
+		MapWidth:        cmd.MapWidth,
+		MapHeight:       cmd.MapHeight,
+		Resources:       Resources{},
+		ActiveElements:  activeElements,
 		PassiveElements: []ActiveElement{},
 		Timestamp:       cmd.Timestamp,
 	}
 	farm.applyFarmCreatedEvt(evt)
 	farm.Record(evt)
 	return farm, nil
+}
+
+func generateInitialActiveElements(mapWidth, mapHeight int) []ActiveElement {
+	cornPositions := []string{
+		fmt.Sprintf("%d_%d", 0, 0),
+		fmt.Sprintf("%d_%d", 1, 0),
+	}
+	grassPositions := []string{
+		fmt.Sprintf("%d_%d", 0, 1),
+		fmt.Sprintf("%d_%d", 1, 1),
+	}
+	var activeElements []ActiveElement
+	for x := range mapWidth {
+		for y := range mapHeight {
+			position := fmt.Sprintf("%d_%d", x, y)
+			if slices.Contains(cornPositions, position) {
+				c := NewCorn(domain.GenerateID(), x, y)
+				activeElements = append(activeElements, &c)
+				continue
+			}
+			if slices.Contains(grassPositions, position) {
+				g := NewGrass(domain.GenerateID(), x, y)
+				activeElements = append(activeElements, &g)
+				continue
+			}
+			d := NewDirt(domain.GenerateID(), x, y)
+			activeElements = append(activeElements, &d)
+		}
+	}
+	return activeElements
 }
 
 func (farm *Farm) HarvestCorn(cmd HarvestCornCmd) error {

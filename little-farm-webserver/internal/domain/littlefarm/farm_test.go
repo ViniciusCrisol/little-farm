@@ -21,24 +21,28 @@ func newValidFarm(t *testing.T) Farm {
 	return farm
 }
 
-func cornIDFromFarm(farm Farm) domain.ID {
+func cornIDFromFarm(t *testing.T, farm Farm) domain.ID {
+	t.Helper()
 	evt := farm.UncommittedEvents()[0].(FarmCreatedEvt)
 	for _, e := range evt.ActiveElements {
 		if _, isCorn := e.(*Corn); isCorn {
 			return e.ID()
 		}
 	}
-	panic("no corn found in farm")
+	t.Fatal("no corn found in farm")
+	return domain.ID{}
 }
 
-func grassIDFromFarm(farm Farm) domain.ID {
+func grassIDFromFarm(t *testing.T, farm Farm) domain.ID {
+	t.Helper()
 	evt := farm.UncommittedEvents()[0].(FarmCreatedEvt)
 	for _, e := range evt.ActiveElements {
 		if _, isGrass := e.(*Grass); isGrass {
 			return e.ID()
 		}
 	}
-	panic("no grass found in farm")
+	t.Fatal("no grass found in farm")
+	return domain.ID{}
 }
 
 func TestNewFarm(t *testing.T) {
@@ -106,10 +110,10 @@ func TestNewFarm(t *testing.T) {
 		assert.Equal(t, Resources{}, evt.Resources)
 	})
 
-	t.Run("It should initialize with 4 active elements", func(t *testing.T) {
+	t.Run("It should initialize with 100 active elements", func(t *testing.T) {
 		farm := newValidFarm(t)
 		evt := farm.UncommittedEvents()[0].(FarmCreatedEvt)
-		assert.Equal(t, 4, len(evt.ActiveElements))
+		assert.Equal(t, 100, len(evt.ActiveElements))
 	})
 }
 
@@ -162,7 +166,7 @@ func TestFarm_HarvestCorn(t *testing.T) {
 
 	t.Run("It should return ErrCornNotReady when the corn has not grown enough", func(t *testing.T) {
 		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(farm)
+		cornID := cornIDFromFarm(t, farm)
 		err := farm.HarvestCorn(HarvestCornCmd{
 			FarmID:    farm.ID(),
 			CornID:    cornID,
@@ -173,7 +177,7 @@ func TestFarm_HarvestCorn(t *testing.T) {
 
 	t.Run("It should return no error and increase corn resources when corn is ready", func(t *testing.T) {
 		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(farm)
+		cornID := cornIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -188,7 +192,7 @@ func TestFarm_HarvestCorn(t *testing.T) {
 
 	t.Run("It should record a CornHarvestedEvt when corn is successfully harvested", func(t *testing.T) {
 		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(farm)
+		cornID := cornIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -220,7 +224,7 @@ func TestFarm_HarvestGrass(t *testing.T) {
 
 	t.Run("It should return ErrGrassNotReady when the grass has not grown enough", func(t *testing.T) {
 		farm := newValidFarm(t)
-		grassID := grassIDFromFarm(farm)
+		grassID := grassIDFromFarm(t, farm)
 		err := farm.HarvestGrass(HarvestGrassCmd{
 			FarmID:    farm.ID(),
 			GrassID:   grassID,
@@ -231,7 +235,7 @@ func TestFarm_HarvestGrass(t *testing.T) {
 
 	t.Run("It should return no error and increase seed resources when grass is ready", func(t *testing.T) {
 		farm := newValidFarm(t)
-		grassID := grassIDFromFarm(farm)
+		grassID := grassIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 3; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -246,7 +250,7 @@ func TestFarm_HarvestGrass(t *testing.T) {
 
 	t.Run("It should record a GrassHarvestedEvt when grass is successfully harvested", func(t *testing.T) {
 		farm := newValidFarm(t)
-		grassID := grassIDFromFarm(farm)
+		grassID := grassIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 3; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -314,7 +318,7 @@ func TestFarm_Resources(t *testing.T) {
 
 	t.Run("It should return updated corn resources after harvesting corn", func(t *testing.T) {
 		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(farm)
+		cornID := cornIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -325,20 +329,20 @@ func TestFarm_Resources(t *testing.T) {
 }
 
 func TestFarm_ActiveElements(t *testing.T) {
-	t.Run("It should return 4 active elements when the farm has just been created", func(t *testing.T) {
+	t.Run("It should return 100 active elements when the farm has just been created", func(t *testing.T) {
 		farm := newValidFarm(t)
-		assert.Equal(t, 4, len(farm.ActiveElements()))
+		assert.Equal(t, 100, len(farm.ActiveElements()))
 	})
 
 	t.Run("It should return one less active element after harvesting corn", func(t *testing.T) {
 		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(farm)
+		cornID := cornIDFromFarm(t, farm)
 		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
 		}
 		farm.HarvestCorn(HarvestCornCmd{FarmID: farm.ID(), CornID: cornID, Timestamp: now})
-		assert.Equal(t, 3, len(farm.ActiveElements()))
+		assert.Equal(t, 99, len(farm.ActiveElements()))
 	})
 }
 
@@ -381,5 +385,46 @@ func TestFarm_UpdatedAt(t *testing.T) {
 		later := time.Now().Add(10 * time.Second)
 		farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: later})
 		assert.Equal(t, later, farm.UpdatedAt())
+	})
+}
+
+func TestGenerateInitialActiveElements(t *testing.T) {
+	t.Run("It should return the correct total number of elements", func(t *testing.T) {
+		mapWidth := 10
+		mapHeight := 10
+		assert.Equal(t, mapWidth*mapHeight, len(generateInitialActiveElements(mapWidth, mapHeight)))
+	})
+
+	t.Run("It should return exactly 2 Corn elements at positions (0,0) and (1,0)", func(t *testing.T) {
+		cornCount := 0
+		for _, e := range generateInitialActiveElements(4, 4) {
+			if _, isCorn := e.(*Corn); isCorn {
+				cornCount++
+			}
+		}
+		assert.Equal(t, 2, cornCount)
+	})
+
+	t.Run("It should return exactly 2 Grass elements at positions (0,1) and (1,1)", func(t *testing.T) {
+		grassCount := 0
+		for _, e := range generateInitialActiveElements(4, 4) {
+			if _, isGrass := e.(*Grass); isGrass {
+				grassCount++
+			}
+		}
+		assert.Equal(t, 2, grassCount)
+	})
+
+	t.Run("It should fill remaining positions with Dirt elements", func(t *testing.T) {
+		mapWidth := 5
+		mapHeight := 5
+		dirtCount := 0
+		for _, e := range generateInitialActiveElements(mapWidth, mapHeight) {
+			if _, isDirt := e.(*Dirt); isDirt {
+				dirtCount++
+			}
+		}
+		expectedDirtCount := (mapWidth * mapHeight) - 4
+		assert.Equal(t, expectedDirtCount, dirtCount)
 	})
 }
