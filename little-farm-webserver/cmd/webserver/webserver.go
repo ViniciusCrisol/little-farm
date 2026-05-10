@@ -8,15 +8,19 @@ import (
 )
 
 func main() {
-	dao := persistence.NewInMemoryFarmDAO()
-	controller := controller.NewFarmController(dao)
-
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /farms", controller.CreateFarm)
-	mux.HandleFunc("GET /farms/{farm_id}", controller.FindFarm)
-	mux.HandleFunc("POST /farms/{farm_id}/advance-one-second", controller.AdvanceOneSecond)
-	mux.HandleFunc("POST /farms/{farm_id}/corn/{corn_id}/harvest", controller.HarvestCorn)
-	mux.HandleFunc("POST /farms/{farm_id}/grass/{grass_id}/harvest", controller.HarvestGrass)
+
+	staticDir := http.Dir("./static")
+	staticServer := http.FileServer(staticDir)
+	mux.Handle("GET /", http.StripPrefix("/", staticServer))
+
+	farmDAO := persistence.NewInMemoryFarmDAO()
+	farmController := controller.NewFarmController(farmDAO)
+	mux.HandleFunc("POST /api/farms", farmController.CreateFarm)
+	mux.HandleFunc("GET /api/farms/{farm_id}", farmController.FindFarm)
+	mux.HandleFunc("POST /api/farms/{farm_id}/advance-one-second", farmController.AdvanceOneSecond)
+	mux.HandleFunc("POST /api/farms/{farm_id}/corn/{corn_id}/harvest", farmController.HarvestCorn)
+	mux.HandleFunc("POST /api/farms/{farm_id}/grass/{grass_id}/harvest", farmController.HarvestGrass)
 
 	(&http.Server{Addr: ":8080", Handler: mux}).ListenAndServe()
 }
