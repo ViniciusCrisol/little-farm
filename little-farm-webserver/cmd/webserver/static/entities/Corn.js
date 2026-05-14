@@ -1,3 +1,5 @@
+import { newCellId } from "../utils.js";
+
 export default class Corn {
 	id = "";
 	kind = "";
@@ -12,13 +14,11 @@ export default class Corn {
 	}
 
 	print() {
-		const cell = document.getElementById(`cell__${this.xPosition}_${this.yPosition}`);
+		const cell = document.getElementById(newCellId(this.xPosition, this.yPosition));
 		if (!cell) {
-			throw new Error(`cell__${this.xPosition}_${this.yPosition} was not found`);
+			throw new Error(`${newCellId(this.xPosition, this.yPosition)} was not found`);
 		}
-		cell.innerHTML = `
-			<div id="${this.id}" data-kind="corn" onclick="handleClick('${this.id}')">${this.kind}</div>
-		`;
+		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}" onclick="handleClick('${this.id}')">${this.kind}</div>`;
 	}
 
 	static isCorn(kind) {
