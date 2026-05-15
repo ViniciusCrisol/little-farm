@@ -1,13 +1,16 @@
-import Corn from "./entities/Corn.js";
-import Dirt from "./entities/Dirt.js";
-import Grass from "./entities/Grass.js";
-import { createFarm } from "./services/farm.js";
-import { newCellId } from "./utils.js";
+// @ts-ignore
+import "./index.css";
+
+import Corn from "./entities/Corn";
+import Dirt from "./entities/Dirt";
+import Grass from "./entities/Grass";
+import { Farm, ActiveElement, createFarm } from "./services/farm";
+import { newCellId } from "./utils";
 
 const MAP_WIDTH = 10;
 const MAP_HEIGHT = 10;
 
-const state = {};
+const state: Map<string, string> = new Map();
 
 async function main() {
 	const farm = await createFarm(MAP_WIDTH, MAP_HEIGHT);
@@ -16,8 +19,11 @@ async function main() {
 }
 main();
 
-function createCells(farm) {
+function createCells(farm: Farm) {
 	const cells = document.getElementById("cells");
+	if (!cells) {
+		throw new Error("cells was not found");
+	}
 	for (let x = 0; x < farm.mapWidth; x++) {
 		for (let y = 0; y < farm.mapHeight; y++) {
 			cells.innerHTML += `<div id="${newCellId(x, y)}"></div>`;
@@ -25,30 +31,30 @@ function createCells(farm) {
 	}
 }
 
-function populateCells(farm) {
+function populateCells(farm: Farm) {
 	const printedIDs = new Set(Object.keys(state));
 	const elementIDs = new Set(farm.activeElements.map((e) => e.id));
 	printedIDs.forEach((id) => {
 		if (!elementIDs.has(id)) {
 			removeElement(id);
-			delete state[id];
+			state.delete(id);
 		}
 	});
 	farm.activeElements.forEach((e) => {
 		if (printedIDs.has(e.id)) {
-			if (state[e.id] !== e.kind) {
+			if (state.get(e.id) !== e.kind) {
 				removeElement(e.id);
-				state[e.id] = e.kind;
+				state.set(e.id, e.kind);
 				createElement(e);
 			}
 			return;
 		}
-		state[e.id] = e.kind;
+		state.set(e.id, e.kind);
 		createElement(e);
 	});
 }
 
-function createElement(e) {
+function createElement(e: ActiveElement) {
 	if (Corn.isCorn(e.kind)) {
 		new Corn(e.id, e.kind, e.xPosition, e.yPosition).print();
 	}
@@ -60,6 +66,6 @@ function createElement(e) {
 	}
 }
 
-function removeElement(elementId) {
+function removeElement(elementId: string) {
 	document.getElementById(elementId)?.remove();
 }

@@ -1,17 +1,12 @@
-import { newCellId } from "../utils.js";
+import { newCellId } from "../utils";
 
 export default class Corn {
-	id = "";
-	kind = "";
-	xPosition = -1;
-	yPosition = -1;
-
-	constructor(id, kind, xPosition, yPosition) {
-		this.id = id;
-		this.kind = kind;
-		this.xPosition = xPosition;
-		this.yPosition = yPosition;
-	}
+	constructor(
+		private readonly id: string,
+		private readonly kind: string,
+		private readonly xPosition: number,
+		private readonly yPosition: number,
+	) {}
 
 	print() {
 		const cell = document.getElementById(newCellId(this.xPosition, this.yPosition));
@@ -21,7 +16,7 @@ export default class Corn {
 		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}" onclick="handleClick('${this.id}')">${this.kind}</div>`;
 	}
 
-	static isCorn(kind) {
+	static isCorn(kind: string) {
 		return ["corn:0", "corn:1", "corn:2"].includes(kind);
 	}
 }
