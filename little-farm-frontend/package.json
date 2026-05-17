@@ -6,7 +6,8 @@
 		"node": "22.14.0"
 	},
 	"scripts": {
-		"build": "webpack --mode production"
+		"build": "webpack --mode production",
+		"build:dev": "webpack --mode production && cp -r dist/* ../little-farm-webserver/cmd/webserver/static/"
 	},
 	"devDependencies": {
 		"html-webpack-plugin": "^5.6.7",

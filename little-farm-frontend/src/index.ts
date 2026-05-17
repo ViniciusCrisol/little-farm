@@ -1,11 +1,11 @@
 import Corn from "./entities/Corn";
 import Dirt from "./entities/Dirt";
 import Grass from "./entities/Grass";
-import { Farm, ActiveElement, createFarm } from "./services/farm";
+import { ActiveElement, createFarm, Farm } from "./services/farm";
 import { newCellId } from "./utils";
 
-const MAP_WIDTH = 10;
-const MAP_HEIGHT = 10;
+const MAP_WIDTH = 8;
+const MAP_HEIGHT = 8;
 
 const state: Map<string, string> = new Map();
 

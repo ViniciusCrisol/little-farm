@@ -1,3 +1,6 @@
+# App files
+cmd/webserver/static/*
+
 # Env files
 .env
 .env.test
