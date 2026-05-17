@@ -1,6 +1,3 @@
-// @ts-ignore
-import "./index.css";
-
 import Corn from "./entities/Corn";
 import Dirt from "./entities/Dirt";
 import Grass from "./entities/Grass";
