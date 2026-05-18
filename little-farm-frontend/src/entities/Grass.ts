@@ -28,19 +28,49 @@ const grass0Sprite = `
 `;
 
 export default class Grass {
+	private readonly isReadyToHarvest: boolean = false;
+
 	constructor(
 		private readonly id: string,
 		private readonly kind: string,
 		private readonly xPosition: number,
 		private readonly yPosition: number,
-	) {}
+		private readonly onclick: () => Promise<void>,
+	) {
+		this.isReadyToHarvest = this.kind !== "grass:0";
+	}
 
 	print() {
 		const cell = document.getElementById(newCellId(this.xPosition, this.yPosition));
 		if (!cell) {
 			throw new Error(`${newCellId(this.xPosition, this.yPosition)} was not found`);
 		}
-		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}" onclick="handleClick('${this.id}')">${grass0Sprite}</div>`;
+		cell.innerHTML = `<div id="${this.id}" class="${
+			this.isReadyToHarvest ? "active" : "disabled"
+		}" data-kind="${this.kind}">${this.chooseSprite()}</div>`;
+
+		if (this.kind !== "grass:0") {
+			const grass = document.getElementById(this.id);
+			if (!grass) {
+				throw new Error(`${this.id} was not found`);
+			}
+			grass.addEventListener("click", this.onclick);
+		}
+	}
+
+	private chooseSprite(): string {
+		switch (this.kind) {
+			case "grass:0":
+				return grass0Sprite;
+			case "grass:1":
+				return "grass:1";
+			case "grass:2":
+				return "grass:2";
+			case "grass:3":
+				return "grass:3";
+			default:
+				return "grass:4";
+		}
 	}
 
 	static isGrass(kind: string) {

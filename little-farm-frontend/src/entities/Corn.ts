@@ -28,19 +28,45 @@ const corn0Sprite = `
 `;
 
 export default class Corn {
+	private readonly isReadyToHarvest: boolean = false;
+
 	constructor(
 		private readonly id: string,
 		private readonly kind: string,
 		private readonly xPosition: number,
 		private readonly yPosition: number,
-	) {}
+		private readonly onclick: () => Promise<void>,
+	) {
+		this.isReadyToHarvest = this.kind !== "corn:0";
+	}
 
 	print() {
 		const cell = document.getElementById(newCellId(this.xPosition, this.yPosition));
 		if (!cell) {
 			throw new Error(`${newCellId(this.xPosition, this.yPosition)} was not found`);
 		}
-		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}" onclick="handleClick('${this.id}')">${corn0Sprite}</div>`;
+		cell.innerHTML = `<div id="${this.id}" class="${
+			this.isReadyToHarvest ? "active" : "disabled"
+		}" data-kind="${this.kind}">${this.chooseSprite()}</div>`;
+
+		if (this.kind !== "corn:0") {
+			const corn = document.getElementById(this.id);
+			if (!corn) {
+				throw new Error(`${this.id} was not found`);
+			}
+			corn.addEventListener("click", this.onclick);
+		}
+	}
+
+	private chooseSprite(): string {
+		switch (this.kind) {
+			case "corn:0":
+				return corn0Sprite;
+			case "corn:1":
+				return "corn:1";
+			default:
+				return "corn:2";
+		}
 	}
 
 	static isCorn(kind: string) {

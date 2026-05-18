@@ -17,7 +17,6 @@
 			}
 
 			#cells > div {
-				cursor: pointer;
 				transition: 0.15s;
 			}
 
@@ -29,6 +28,14 @@
 				display: grid;
 				grid-template-rows: repeat(16, 4px);
 				grid-template-columns: repeat(16, 4px);
+			}
+
+			#cells > div > div.active {
+				cursor: pointer;
+			}
+
+			#cells > div > div.disabled {
+				cursor: not-allowed;
 			}
 		</style>
 	</head>

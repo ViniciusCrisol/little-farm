@@ -40,7 +40,7 @@ export default class Dirt {
 		if (!cell) {
 			throw new Error(`${newCellId(this.xPosition, this.yPosition)} was not found`);
 		}
-		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}" onclick="handleClick('${this.id}')">${dirt0Sprite}</div>`;
+		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}">${dirt0Sprite}</div>`;
 	}
 
 	static isDirt(kind: string) {

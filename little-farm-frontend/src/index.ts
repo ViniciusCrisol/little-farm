@@ -1,18 +1,26 @@
 import Corn from "./entities/Corn";
 import Dirt from "./entities/Dirt";
 import Grass from "./entities/Grass";
-import { ActiveElement, createFarm, Farm } from "./services/farm";
+import { ActiveElement, advanceOneSecond, createFarm, Farm, harvestCorn, harvestGrass } from "./services/farm";
 import { newCellId } from "./utils";
 
 const MAP_WIDTH = 8;
 const MAP_HEIGHT = 8;
+const ONE_SECOND = 1000;
 
-const state: Map<string, string> = new Map();
+let farmId: string;
+const cells: Map<string, string> = new Map();
 
 async function main() {
 	const farm = await createFarm(MAP_WIDTH, MAP_HEIGHT);
 	createCells(farm);
 	populateCells(farm);
+	farmId = farm.farmId;
+
+	setInterval(async () => {
+		const farm = await advanceOneSecond(farmId);
+		populateCells(farm);
+	}, ONE_SECOND);
 }
 main();
 
@@ -29,37 +37,42 @@ function createCells(farm: Farm) {
 }
 
 function populateCells(farm: Farm) {
-	const printedIDs = new Set(Object.keys(state));
 	const elementIDs = new Set(farm.activeElements.map((e) => e.id));
-	printedIDs.forEach((id) => {
+	cells.forEach((_, id) => {
 		if (!elementIDs.has(id)) {
 			removeElement(id);
-			state.delete(id);
+			cells.delete(id);
 		}
 	});
 	farm.activeElements.forEach((e) => {
-		if (printedIDs.has(e.id)) {
-			if (state.get(e.id) !== e.kind) {
+		if (cells.has(e.id)) {
+			if (cells.get(e.id) !== e.kind) {
 				removeElement(e.id);
-				state.set(e.id, e.kind);
+				cells.set(e.id, e.kind);
 				createElement(e);
 			}
 			return;
 		}
-		state.set(e.id, e.kind);
+		cells.set(e.id, e.kind);
 		createElement(e);
 	});
 }
 
 function createElement(e: ActiveElement) {
 	if (Corn.isCorn(e.kind)) {
-		new Corn(e.id, e.kind, e.xPosition, e.yPosition).print();
+		new Corn(e.id, e.kind, e.xPosition, e.yPosition, async () => {
+			const farm = await harvestCorn(farmId, e.id);
+			populateCells(farm);
+		}).print();
 	}
 	if (Dirt.isDirt(e.kind)) {
 		new Dirt(e.id, e.kind, e.xPosition, e.yPosition).print();
 	}
 	if (Grass.isGrass(e.kind)) {
-		new Grass(e.id, e.kind, e.xPosition, e.yPosition).print();
+		new Grass(e.id, e.kind, e.xPosition, e.yPosition, async () => {
+			const farm = await harvestGrass(farmId, e.id);
+			populateCells(farm);
+		}).print();
 	}
 }
 
