@@ -15,11 +15,13 @@ async function main() {
 	const farm = await createFarm(MAP_WIDTH, MAP_HEIGHT);
 	createCells(farm);
 	populateCells(farm);
+	printResources(farm);
 	farmId = farm.farmId;
 
 	setInterval(async () => {
 		const farm = await advanceOneSecond(farmId);
 		populateCells(farm);
+		printResources(farm);
 	}, ONE_SECOND);
 }
 main();
@@ -63,6 +65,7 @@ function createElement(e: ActiveElement) {
 		new Corn(e.id, e.kind, e.xPosition, e.yPosition, async () => {
 			const farm = await harvestCorn(farmId, e.id);
 			populateCells(farm);
+			printResources(farm);
 		}).print();
 	}
 	if (Dirt.isDirt(e.kind)) {
@@ -72,10 +75,28 @@ function createElement(e: ActiveElement) {
 		new Grass(e.id, e.kind, e.xPosition, e.yPosition, async () => {
 			const farm = await harvestGrass(farmId, e.id);
 			populateCells(farm);
+			printResources(farm);
 		}).print();
 	}
 }
 
 function removeElement(elementId: string) {
 	document.getElementById(elementId)?.remove();
+}
+
+function printResources(farm: Farm) {
+	const corn = document.getElementById("resource__corn");
+	if (corn) {
+		corn.textContent = farm.resources.corn.toString();
+	}
+
+	const seeds = document.getElementById("resource__seeds");
+	if (seeds) {
+		seeds.textContent = farm.resources.seeds.toString();
+	}
+
+	const money = document.getElementById("resource__money");
+	if (money) {
+		money.textContent = (farm.resources.moneyInCents / 100).toFixed(2);
+	}
 }
