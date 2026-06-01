@@ -22,6 +22,11 @@ var (
 	ErrGrassNotFound  = fmt.Errorf("%w: grass not found", apperr.ErrValidation)
 	ErrGrassNotReady  = fmt.Errorf("%w: grass not ready", apperr.ErrValidation)
 
+	ErrInvalidDirtID          = fmt.Errorf("%w: invalid dirt id", apperr.ErrValidation)
+	ErrDirtNotFound           = fmt.Errorf("%w: dirt not found", apperr.ErrValidation)
+	ErrNotEnoughCornResources = fmt.Errorf("%w: not enough corn resources", apperr.ErrValidation)
+	ErrNotEnoughSeedResources = fmt.Errorf("%w: not enough seed resources", apperr.ErrValidation)
+
 	ErrInvalidWheatID = fmt.Errorf("%w: invalid wheat id", apperr.ErrValidation)
 	ErrWheatNotFound  = fmt.Errorf("%w: wheat not found", apperr.ErrValidation)
 	ErrWheatNotReady  = fmt.Errorf("%w: wheat not ready", apperr.ErrValidation)
@@ -67,6 +72,32 @@ type GrassHarvestedEvt struct {
 	FarmID    domain.ID
 	GrassID   domain.ID
 	Produced  int
+	Timestamp time.Time
+}
+
+type PlantCornCmd struct {
+	FarmID    domain.ID
+	DirtID    domain.ID
+	Timestamp time.Time
+}
+
+type CornPlantedEvt struct {
+	CornID    domain.ID
+	FarmID    domain.ID
+	DirtID    domain.ID
+	Timestamp time.Time
+}
+
+type PlantWheatCmd struct {
+	FarmID    domain.ID
+	DirtID    domain.ID
+	Timestamp time.Time
+}
+
+type WheatPlantedEvt struct {
+	WheatID   domain.ID
+	FarmID    domain.ID
+	DirtID    domain.ID
 	Timestamp time.Time
 }
 

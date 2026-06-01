@@ -66,7 +66,9 @@ func TestNewFarm(t *testing.T) {
 			MapHeight: 4,
 			Timestamp: time.Now(),
 		})
+
 		assert.NoError(t, err)
+
 		events := farm.UncommittedEvents()
 		assert.Equal(t, 1, len(events))
 		_, isFarmCreatedEvt := events[0].(FarmCreatedEvt)
@@ -130,11 +132,14 @@ func TestFarm_AdvanceOneSecond(t *testing.T) {
 	t.Run("It should record a OneSecondAdvancedEvt when advancing one second", func(t *testing.T) {
 		farm := newValidFarm(t)
 		farm.Commit()
+
 		err := farm.AdvanceOneSecond(AdvanceOneSecondCmd{
 			FarmID:    farm.ID(),
 			Timestamp: time.Now(),
 		})
+
 		assert.NoError(t, err)
+
 		events := farm.UncommittedEvents()
 		assert.Equal(t, 1, len(events))
 		_, isOneSecondAdvancedEvt := events[0].(OneSecondAdvancedEvt)
@@ -176,6 +181,7 @@ func TestFarm_HarvestCorn(t *testing.T) {
 	})
 
 	t.Run("It should return no error and increase corn resources when corn is ready", func(t *testing.T) {
+		now := time.Now()
 		farm := newValidFarm(t)
 		cornID := cornIDFromFarm(t, farm)
 		var xPosition, yPosition int
@@ -186,17 +192,19 @@ func TestFarm_HarvestCorn(t *testing.T) {
 				break
 			}
 		}
-		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
 		}
+
 		err := farm.HarvestCorn(HarvestCornCmd{
 			FarmID:    farm.ID(),
 			CornID:    cornID,
 			Timestamp: now,
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, 100, len(farm.ActiveElements()))
+
 		var foundDirt bool
 		for _, e := range farm.ActiveElements() {
 			if e.ID().Equals(cornID) {
@@ -210,18 +218,20 @@ func TestFarm_HarvestCorn(t *testing.T) {
 	})
 
 	t.Run("It should record a CornHarvestedEvt when corn is successfully harvested", func(t *testing.T) {
+		now := time.Now()
 		farm := newValidFarm(t)
 		cornID := cornIDFromFarm(t, farm)
-		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
 		}
 		farm.Commit()
+
 		farm.HarvestCorn(HarvestCornCmd{
 			FarmID:    farm.ID(),
 			CornID:    cornID,
 			Timestamp: now,
 		})
+
 		events := farm.UncommittedEvents()
 		assert.Equal(t, 1, len(events))
 		_, isCornHarvestedEvt := events[0].(CornHarvestedEvt)
@@ -253,6 +263,7 @@ func TestFarm_HarvestGrass(t *testing.T) {
 	})
 
 	t.Run("It should return no error and increase seed resources when grass is ready", func(t *testing.T) {
+		now := time.Now()
 		farm := newValidFarm(t)
 		grassID := grassIDFromFarm(t, farm)
 		var xPosition, yPosition int
@@ -263,17 +274,19 @@ func TestFarm_HarvestGrass(t *testing.T) {
 				break
 			}
 		}
-		now := time.Now()
 		for i := 0; i < 3; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
 		}
+
 		err := farm.HarvestGrass(HarvestGrassCmd{
 			FarmID:    farm.ID(),
 			GrassID:   grassID,
 			Timestamp: now,
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, 100, len(farm.ActiveElements()))
+
 		var foundDirt bool
 		for _, e := range farm.ActiveElements() {
 			if e.ID().Equals(grassID) {
@@ -287,18 +300,20 @@ func TestFarm_HarvestGrass(t *testing.T) {
 	})
 
 	t.Run("It should record a GrassHarvestedEvt when grass is successfully harvested", func(t *testing.T) {
+		now := time.Now()
 		farm := newValidFarm(t)
 		grassID := grassIDFromFarm(t, farm)
-		now := time.Now()
 		for i := 0; i < 3; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
 		}
 		farm.Commit()
+
 		farm.HarvestGrass(HarvestGrassCmd{
 			FarmID:    farm.ID(),
 			GrassID:   grassID,
 			Timestamp: now,
 		})
+
 		events := farm.UncommittedEvents()
 		assert.Equal(t, 1, len(events))
 		_, isGrassHarvestedEvt := events[0].(GrassHarvestedEvt)
@@ -377,6 +392,166 @@ func TestFarm_PassiveElements(t *testing.T) {
 	t.Run("It should return an empty slice when the farm has just been created", func(t *testing.T) {
 		farm := newValidFarm(t)
 		assert.Equal(t, 0, len(farm.PassiveElements()))
+	})
+}
+
+func TestFarm_PlantCorn(t *testing.T) {
+	t.Run("It should return ErrDirtNotFound when the dirt ID does not exist", func(t *testing.T) {
+		farm := newValidFarm(t)
+		err := farm.PlantCorn(PlantCornCmd{FarmID: farm.ID(), DirtID: domain.GenerateID(), Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrDirtNotFound when the target is not dirt", func(t *testing.T) {
+		farm := newValidFarm(t)
+		cornID := cornIDFromFarm(t, farm)
+		farm.resources.Corn = 1
+		err := farm.PlantCorn(PlantCornCmd{FarmID: farm.ID(), DirtID: cornID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrNotEnoughCornResources when corn resources is less than 1", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		err := farm.PlantCorn(PlantCornCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrNotEnoughCornResources)
+	})
+
+	t.Run("It should plant corn and decrement corn resources when there is enough dirt and corn resource", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var x, y int
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				x = d.XPosition()
+				y = d.YPosition()
+				break
+			}
+		}
+		farm.resources.Corn = 1
+
+		err := farm.PlantCorn(PlantCornCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		assert.NoError(t, err)
+		assert.Equal(t, 0, farm.Resources().Corn)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+
+		var foundCorn bool
+		for _, e := range farm.ActiveElements() {
+			if e.XPosition() == x && e.YPosition() == y {
+				if _, isCorn := e.(*Corn); isCorn {
+					foundCorn = true
+				}
+			}
+		}
+		assert.True(t, foundCorn)
+	})
+
+	t.Run("It should record a CornPlantedEvt when corn is planted", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.Commit()
+		farm.resources.Corn = 1
+
+		farm.PlantCorn(PlantCornCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		events := farm.UncommittedEvents()
+		assert.Equal(t, 1, len(events))
+		_, isCornPlantedEvt := events[0].(CornPlantedEvt)
+		assert.True(t, isCornPlantedEvt)
+	})
+}
+
+func TestFarm_PlantWheat(t *testing.T) {
+	t.Run("It should return ErrDirtNotFound when the dirt ID does not exist", func(t *testing.T) {
+		farm := newValidFarm(t)
+		err := farm.PlantWheat(PlantWheatCmd{FarmID: farm.ID(), DirtID: domain.GenerateID(), Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrDirtNotFound when the target is not dirt", func(t *testing.T) {
+		farm := newValidFarm(t)
+		grassID := grassIDFromFarm(t, farm)
+		farm.resources.Seeds = 1
+		err := farm.PlantWheat(PlantWheatCmd{FarmID: farm.ID(), DirtID: grassID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrNotEnoughSeedResources when seed resources is less than 1", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		err := farm.PlantWheat(PlantWheatCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrNotEnoughSeedResources)
+	})
+
+	t.Run("It should plant wheat and decrement seed resources when there is enough dirt and seed resource", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var x, y int
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				x = d.XPosition()
+				y = d.YPosition()
+				break
+			}
+		}
+		farm.resources.Seeds = 1
+
+		err := farm.PlantWheat(PlantWheatCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		assert.NoError(t, err)
+		assert.Equal(t, 0, farm.Resources().Seeds)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+
+		var foundWheat bool
+		for _, e := range farm.ActiveElements() {
+			if e.XPosition() == x && e.YPosition() == y {
+				if _, isWheat := e.(*Wheat); isWheat {
+					foundWheat = true
+				}
+			}
+		}
+		assert.True(t, foundWheat)
+	})
+
+	t.Run("It should record a WheatPlantedEvt when wheat is planted", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.Commit()
+		farm.resources.Seeds = 1
+
+		farm.PlantWheat(PlantWheatCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		events := farm.UncommittedEvents()
+		assert.Equal(t, 1, len(events))
+		_, isWheatPlantedEvt := events[0].(WheatPlantedEvt)
+		assert.True(t, isWheatPlantedEvt)
 	})
 }
 

@@ -21,6 +21,8 @@ func main() {
 	mux.HandleFunc("POST /api/farms/{farm_id}/advance-one-second", farmController.AdvanceOneSecond)
 	mux.HandleFunc("POST /api/farms/{farm_id}/corn/{corn_id}/harvest", farmController.HarvestCorn)
 	mux.HandleFunc("POST /api/farms/{farm_id}/grass/{grass_id}/harvest", farmController.HarvestGrass)
+	mux.HandleFunc("POST /api/farms/{farm_id}/dirt/{dirt_id}/plant-corn", farmController.PlantCorn)
+	mux.HandleFunc("POST /api/farms/{farm_id}/dirt/{dirt_id}/plant-wheat", farmController.PlantWheat)
 
 	(&http.Server{Addr: ":8080", Handler: mux}).ListenAndServe()
 }

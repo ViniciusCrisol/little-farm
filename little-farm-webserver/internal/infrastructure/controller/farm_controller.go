@@ -176,3 +176,77 @@ func (controller *FarmController) HarvestGrass(response http.ResponseWriter, req
 
 	web.RespondWithJSON(response, http.StatusCreated, FarmToFarmOutputDTO(farm))
 }
+
+func (controller *FarmController) PlantCorn(response http.ResponseWriter, request *http.Request) {
+	farmID, err := domain.NewID(request.PathValue("farm_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
+		return
+	}
+	dirtID, err := domain.NewID(request.PathValue("dirt_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidDirtID)
+		return
+	}
+
+	farm, found, err := controller.farmDAO.Find(farmID)
+	if err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if !found {
+		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
+		return
+	}
+	if err = farm.PlantCorn(littlefarm.PlantCornCmd{
+		FarmID:    farmID,
+		DirtID:    dirtID,
+		Timestamp: time.Now(),
+	}); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if err = controller.farmDAO.Save(farm); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+
+	web.RespondWithJSON(response, http.StatusOK, FarmToFarmOutputDTO(farm))
+}
+
+func (controller *FarmController) PlantWheat(response http.ResponseWriter, request *http.Request) {
+	farmID, err := domain.NewID(request.PathValue("farm_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidFarmID)
+		return
+	}
+	dirtID, err := domain.NewID(request.PathValue("dirt_id"))
+	if err != nil {
+		web.RespondWithError(response, littlefarm.ErrInvalidDirtID)
+		return
+	}
+
+	farm, found, err := controller.farmDAO.Find(farmID)
+	if err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if !found {
+		web.RespondWithError(response, littlefarm.ErrFarmNotFound)
+		return
+	}
+	if err = farm.PlantWheat(littlefarm.PlantWheatCmd{
+		FarmID:    farmID,
+		DirtID:    dirtID,
+		Timestamp: time.Now(),
+	}); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+	if err = controller.farmDAO.Save(farm); err != nil {
+		web.RespondWithError(response, err)
+		return
+	}
+
+	web.RespondWithJSON(response, http.StatusOK, FarmToFarmOutputDTO(farm))
+}

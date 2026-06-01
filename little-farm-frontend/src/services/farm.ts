@@ -96,6 +96,20 @@ export async function advanceOneSecond(farmId: string): Promise<Farm> {
 	return farmResponseToFarm(await response.json());
 }
 
+export async function plantCorn(farmId: string, dirtId: string): Promise<Farm> {
+	const response = await fetch(`/api/farms/${farmId}/dirt/${dirtId}/plant-corn`, {
+		method: "POST",
+	});
+	return farmResponseToFarm(await response.json());
+}
+
+export async function plantWheat(farmId: string, dirtId: string): Promise<Farm> {
+	const response = await fetch(`/api/farms/${farmId}/dirt/${dirtId}/plant-wheat`, {
+		method: "POST",
+	});
+	return farmResponseToFarm(await response.json());
+}
+
 export async function harvestCorn(farmId: string, cornId: string): Promise<Farm> {
 	const response = await fetch(`/api/farms/${farmId}/corn/${cornId}/harvest`, {
 		method: "POST",

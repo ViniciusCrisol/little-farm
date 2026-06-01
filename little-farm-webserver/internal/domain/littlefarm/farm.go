@@ -135,6 +135,66 @@ func (farm *Farm) HarvestGrass(cmd HarvestGrassCmd) error {
 	return nil
 }
 
+func (farm *Farm) PlantCorn(cmd PlantCornCmd) error {
+	var dirt *Dirt
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(cmd.DirtID) {
+			d, isDirt := e.(*Dirt)
+			if !isDirt {
+				return ErrDirtNotFound
+			}
+			dirt = d
+			break
+		}
+	}
+	if dirt == nil {
+		return ErrDirtNotFound
+	}
+	if farm.resources.Corn < 1 {
+		return ErrNotEnoughCornResources
+	}
+
+	evt := CornPlantedEvt{
+		CornID:    domain.GenerateID(),
+		FarmID:    cmd.FarmID,
+		DirtID:    cmd.DirtID,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.Record(evt)
+	farm.applyCornPlantedEvt(evt)
+	return nil
+}
+
+func (farm *Farm) PlantWheat(cmd PlantWheatCmd) error {
+	var dirt *Dirt
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(cmd.DirtID) {
+			d, isDirt := e.(*Dirt)
+			if !isDirt {
+				return ErrDirtNotFound
+			}
+			dirt = d
+			break
+		}
+	}
+	if dirt == nil {
+		return ErrDirtNotFound
+	}
+	if farm.resources.Seeds < 1 {
+		return ErrNotEnoughSeedResources
+	}
+
+	evt := WheatPlantedEvt{
+		WheatID:   domain.GenerateID(),
+		FarmID:    cmd.FarmID,
+		DirtID:    cmd.DirtID,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.Record(evt)
+	farm.applyWheatPlantedEvt(evt)
+	return nil
+}
+
 func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
 	evt := OneSecondAdvancedEvt{
 		FarmID:    cmd.FarmID,
@@ -185,12 +245,8 @@ func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
 func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
 	for i, e := range farm.activeElements {
 		if e.ID().Equals(evt.CornID) {
-			farm.activeElements = append(
-				farm.activeElements[:i],
-				farm.activeElements[i+1:]...,
-			)
-			d := NewDirt(domain.GenerateID(),
-				e.XPosition(), e.YPosition())
+			farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+			d := NewDirt(domain.GenerateID(), e.XPosition(), e.YPosition())
 			farm.activeElements = append(farm.activeElements, &d)
 			break
 		}
@@ -202,17 +258,45 @@ func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
 func (farm *Farm) applyGrassHarvestedEvt(evt GrassHarvestedEvt) {
 	for i, e := range farm.activeElements {
 		if e.ID().Equals(evt.GrassID) {
-			farm.activeElements = append(
-				farm.activeElements[:i],
-				farm.activeElements[i+1:]...,
-			)
-			d := NewDirt(domain.GenerateID(),
-				e.XPosition(), e.YPosition())
+			farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+			d := NewDirt(domain.GenerateID(), e.XPosition(), e.YPosition())
 			farm.activeElements = append(farm.activeElements, &d)
 			break
 		}
 	}
 	farm.resources.Seeds += evt.Produced
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyCornPlantedEvt(evt CornPlantedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.DirtID) {
+			d, isDirt := e.(*Dirt)
+			if isDirt {
+				farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+				c := NewCorn(evt.CornID, d.XPosition(), d.YPosition())
+				farm.activeElements = append(farm.activeElements, &c)
+				break
+			}
+		}
+	}
+	farm.resources.Corn--
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyWheatPlantedEvt(evt WheatPlantedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.DirtID) {
+			d, isDirt := e.(*Dirt)
+			if isDirt {
+				farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+				w := NewWheat(evt.WheatID, d.XPosition(), d.YPosition())
+				farm.activeElements = append(farm.activeElements, &w)
+				break
+			}
+		}
+	}
+	farm.resources.Seeds--
 	farm.updatedAt = evt.Timestamp
 }
 

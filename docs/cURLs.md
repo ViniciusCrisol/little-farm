@@ -15,6 +15,16 @@ curl http://localhost:8080/api/farms/:farm_id \
 curl -X POST http://localhost:8080/api/farms/:farm_id/advance-one-second \
  -H "Accept-Encoding: gzip" | gunzip
 
+# Plant Corn
+
+curl -X POST http://localhost:8080/api/farms/:farm_id/dirt/:dirt_id/plant-corn \
+ -H "Accept-Encoding: gzip" | gunzip
+
+# Plant Wheat
+
+curl -X POST http://localhost:8080/api/farms/:farm_id/dirt/:dirt_id/plant-wheat \
+ -H "Accept-Encoding: gzip" | gunzip
+
 # Harvest Corn
 
 curl -X POST http://localhost:8080/api/farms/:farm_id/corn/:corn_id/harvest \
