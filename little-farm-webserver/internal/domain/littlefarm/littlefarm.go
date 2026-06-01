@@ -21,6 +21,10 @@ var (
 	ErrInvalidGrassID = fmt.Errorf("%w: invalid grass id", apperr.ErrValidation)
 	ErrGrassNotFound  = fmt.Errorf("%w: grass not found", apperr.ErrValidation)
 	ErrGrassNotReady  = fmt.Errorf("%w: grass not ready", apperr.ErrValidation)
+
+	ErrInvalidWheatID = fmt.Errorf("%w: invalid wheat id", apperr.ErrValidation)
+	ErrWheatNotFound  = fmt.Errorf("%w: wheat not found", apperr.ErrValidation)
+	ErrWheatNotReady  = fmt.Errorf("%w: wheat not ready", apperr.ErrValidation)
 )
 
 type CreateFarmCmd struct {
