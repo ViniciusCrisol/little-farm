@@ -178,6 +178,14 @@ func TestFarm_HarvestCorn(t *testing.T) {
 	t.Run("It should return no error and increase corn resources when corn is ready", func(t *testing.T) {
 		farm := newValidFarm(t)
 		cornID := cornIDFromFarm(t, farm)
+		var xPosition, yPosition int
+		for _, e := range farm.ActiveElements() {
+			if e.ID().Equals(cornID) {
+				xPosition = e.XPosition()
+				yPosition = e.YPosition()
+				break
+			}
+		}
 		now := time.Now()
 		for i := 0; i < 5; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -188,6 +196,17 @@ func TestFarm_HarvestCorn(t *testing.T) {
 			Timestamp: now,
 		})
 		assert.NoError(t, err)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+		var foundDirt bool
+		for _, e := range farm.ActiveElements() {
+			if e.ID().Equals(cornID) {
+				assert.Fail(t, "harvested corn should no longer be present in active elements")
+			}
+			if d, isDirt := e.(*Dirt); isDirt && d.XPosition() == xPosition && d.YPosition() == yPosition {
+				foundDirt = true
+			}
+		}
+		assert.True(t, foundDirt)
 	})
 
 	t.Run("It should record a CornHarvestedEvt when corn is successfully harvested", func(t *testing.T) {
@@ -236,6 +255,14 @@ func TestFarm_HarvestGrass(t *testing.T) {
 	t.Run("It should return no error and increase seed resources when grass is ready", func(t *testing.T) {
 		farm := newValidFarm(t)
 		grassID := grassIDFromFarm(t, farm)
+		var xPosition, yPosition int
+		for _, e := range farm.ActiveElements() {
+			if e.ID().Equals(grassID) {
+				xPosition = e.XPosition()
+				yPosition = e.YPosition()
+				break
+			}
+		}
 		now := time.Now()
 		for i := 0; i < 3; i++ {
 			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
@@ -246,6 +273,17 @@ func TestFarm_HarvestGrass(t *testing.T) {
 			Timestamp: now,
 		})
 		assert.NoError(t, err)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+		var foundDirt bool
+		for _, e := range farm.ActiveElements() {
+			if e.ID().Equals(grassID) {
+				assert.Fail(t, "harvested grass should no longer be present in active elements")
+			}
+			if d, isDirt := e.(*Dirt); isDirt && d.XPosition() == xPosition && d.YPosition() == yPosition {
+				foundDirt = true
+			}
+		}
+		assert.True(t, foundDirt)
 	})
 
 	t.Run("It should record a GrassHarvestedEvt when grass is successfully harvested", func(t *testing.T) {
@@ -332,17 +370,6 @@ func TestFarm_ActiveElements(t *testing.T) {
 	t.Run("It should return 100 active elements when the farm has just been created", func(t *testing.T) {
 		farm := newValidFarm(t)
 		assert.Equal(t, 100, len(farm.ActiveElements()))
-	})
-
-	t.Run("It should return one less active element after harvesting corn", func(t *testing.T) {
-		farm := newValidFarm(t)
-		cornID := cornIDFromFarm(t, farm)
-		now := time.Now()
-		for i := 0; i < 5; i++ {
-			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
-		}
-		farm.HarvestCorn(HarvestCornCmd{FarmID: farm.ID(), CornID: cornID, Timestamp: now})
-		assert.Equal(t, 99, len(farm.ActiveElements()))
 	})
 }
 

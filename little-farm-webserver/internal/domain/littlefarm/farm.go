@@ -189,6 +189,9 @@ func (farm *Farm) applyCornHarvestedEvt(evt CornHarvestedEvt) {
 				farm.activeElements[:i],
 				farm.activeElements[i+1:]...,
 			)
+			d := NewDirt(domain.GenerateID(),
+				e.XPosition(), e.YPosition())
+			farm.activeElements = append(farm.activeElements, &d)
 			break
 		}
 	}
@@ -203,6 +206,9 @@ func (farm *Farm) applyGrassHarvestedEvt(evt GrassHarvestedEvt) {
 				farm.activeElements[:i],
 				farm.activeElements[i+1:]...,
 			)
+			d := NewDirt(domain.GenerateID(),
+				e.XPosition(), e.YPosition())
+			farm.activeElements = append(farm.activeElements, &d)
 			break
 		}
 	}
