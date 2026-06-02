@@ -33,6 +33,7 @@ export default class Dirt {
 		private readonly kind: string,
 		private readonly xPosition: number,
 		private readonly yPosition: number,
+		private readonly onclick: () => Promise<void>,
 	) {}
 
 	print() {
@@ -40,7 +41,13 @@ export default class Dirt {
 		if (!cell) {
 			throw new Error(`${newCellId(this.xPosition, this.yPosition)} was not found`);
 		}
-		cell.innerHTML = `<div id="${this.id}" data-kind="${this.kind}">${dirt0Sprite}</div>`;
+		cell.innerHTML = `<div id="${this.id}" class="active" data-kind="${this.kind}">${dirt0Sprite}</div>`;
+
+		const dirt = document.getElementById(this.id);
+		if (!dirt) {
+			throw new Error(`${this.id} was not found`);
+		}
+		dirt.addEventListener("click", this.onclick);
 	}
 
 	static isDirt(kind: string) {
