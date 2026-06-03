@@ -45,6 +45,18 @@ func grassIDFromFarm(t *testing.T, farm Farm) domain.ID {
 	return domain.ID{}
 }
 
+func pumpkinIDFromFarm(t *testing.T, farm Farm) domain.ID {
+	t.Helper()
+	evt := farm.UncommittedEvents()[0].(FarmCreatedEvt)
+	for _, e := range evt.ActiveElements {
+		if _, isPumpkin := e.(*Pumpkin); isPumpkin {
+			return e.ID()
+		}
+	}
+	t.Fatal("no pumpkin found in farm")
+	return domain.ID{}
+}
+
 func TestNewFarm(t *testing.T) {
 	t.Run("It should return a Farm when MapWidth and MapHeight are valid", func(t *testing.T) {
 		farmID := domain.GenerateID()
@@ -321,6 +333,120 @@ func TestFarm_HarvestGrass(t *testing.T) {
 	})
 }
 
+func TestFarm_HarvestPumpkin(t *testing.T) {
+	t.Run("It should return ErrPumpkinNotFound when the pumpkin ID does not exist", func(t *testing.T) {
+		farm := newValidFarm(t)
+		unknownID := domain.GenerateID()
+		err := farm.HarvestPumpkin(HarvestPumpkinCmd{
+			FarmID:    farm.ID(),
+			PumpkinID: unknownID,
+			Timestamp: time.Now(),
+		})
+		assert.ErrorIs(t, err, ErrPumpkinNotFound)
+	})
+
+	t.Run("It should return ErrPumpkinNotReady when the pumpkin has not grown enough", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.resources.Corn = 1
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+		assert.NoError(t, err)
+
+		var pumpkinID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if p, isPumpkin := e.(*Pumpkin); isPumpkin {
+				pumpkinID = p.ID()
+				break
+			}
+		}
+		err = farm.HarvestPumpkin(HarvestPumpkinCmd{FarmID: farm.ID(), PumpkinID: pumpkinID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrPumpkinNotReady)
+	})
+
+	t.Run("It should return no error and increase corn resources when pumpkin is ready", func(t *testing.T) {
+		now := time.Now()
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.resources.Corn = 1
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: now})
+		assert.NoError(t, err)
+
+		var pumpkinID domain.ID
+		var xPosition, yPosition int
+		for _, e := range farm.ActiveElements() {
+			if p, isPumpkin := e.(*Pumpkin); isPumpkin {
+				pumpkinID = p.ID()
+				xPosition = p.XPosition()
+				yPosition = p.YPosition()
+				break
+			}
+		}
+		for i := 0; i < 5; i++ {
+			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		}
+
+		err = farm.HarvestPumpkin(HarvestPumpkinCmd{FarmID: farm.ID(), PumpkinID: pumpkinID, Timestamp: now})
+		assert.NoError(t, err)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+
+		var foundDirt bool
+		for _, e := range farm.ActiveElements() {
+			if e.ID().Equals(pumpkinID) {
+				assert.Fail(t, "harvested pumpkin should no longer be present in active elements")
+			}
+			if d, isDirt := e.(*Dirt); isDirt && d.XPosition() == xPosition && d.YPosition() == yPosition {
+				foundDirt = true
+			}
+		}
+		assert.True(t, foundDirt)
+	})
+
+	t.Run("It should record a PumpkinHarvestedEvt when pumpkin is successfully harvested", func(t *testing.T) {
+		now := time.Now()
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.resources.Corn = 1
+		farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: now})
+
+		var pumpkinID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if p, isPumpkin := e.(*Pumpkin); isPumpkin {
+				pumpkinID = p.ID()
+				break
+			}
+		}
+		for i := 0; i < 5; i++ {
+			farm.AdvanceOneSecond(AdvanceOneSecondCmd{FarmID: farm.ID(), Timestamp: now})
+		}
+		farm.Commit()
+
+		farm.HarvestPumpkin(HarvestPumpkinCmd{FarmID: farm.ID(), PumpkinID: pumpkinID, Timestamp: now})
+
+		events := farm.UncommittedEvents()
+		assert.Equal(t, 1, len(events))
+		_, isPumpkinHarvestedEvt := events[0].(PumpkinHarvestedEvt)
+		assert.True(t, isPumpkinHarvestedEvt)
+	})
+}
+
 func TestFarm_MapWidth(t *testing.T) {
 	t.Run("It should return the map width set during creation", func(t *testing.T) {
 		farm, err := NewFarm(CreateFarmCmd{
@@ -472,6 +598,86 @@ func TestFarm_PlantCorn(t *testing.T) {
 		assert.Equal(t, 1, len(events))
 		_, isCornPlantedEvt := events[0].(CornPlantedEvt)
 		assert.True(t, isCornPlantedEvt)
+	})
+}
+
+func TestFarm_PlantPumpkin(t *testing.T) {
+	t.Run("It should return ErrDirtNotFound when the dirt ID does not exist", func(t *testing.T) {
+		farm := newValidFarm(t)
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: domain.GenerateID(), Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrDirtNotFound when the target is not dirt", func(t *testing.T) {
+		farm := newValidFarm(t)
+		cornID := cornIDFromFarm(t, farm)
+		farm.resources.Corn = 1
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: cornID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrDirtNotFound)
+	})
+
+	t.Run("It should return ErrNotEnoughCornResources when corn resources is less than 1", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+		assert.ErrorIs(t, err, ErrNotEnoughCornResources)
+	})
+
+	t.Run("It should plant pumpkin and decrement corn resources when there is enough dirt and corn resource", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var x, y int
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				x = d.XPosition()
+				y = d.YPosition()
+				break
+			}
+		}
+		farm.resources.Corn = 1
+
+		err := farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		assert.NoError(t, err)
+		assert.Equal(t, 0, farm.Resources().Corn)
+		assert.Equal(t, 100, len(farm.ActiveElements()))
+
+		var foundPumpkin bool
+		for _, e := range farm.ActiveElements() {
+			if e.XPosition() == x && e.YPosition() == y {
+				if _, isPumpkin := e.(*Pumpkin); isPumpkin {
+					foundPumpkin = true
+				}
+			}
+		}
+		assert.True(t, foundPumpkin)
+	})
+
+	t.Run("It should record a PumpkinPlantedEvt when pumpkin is planted", func(t *testing.T) {
+		farm := newValidFarm(t)
+		var dirtID domain.ID
+		for _, e := range farm.ActiveElements() {
+			if d, isDirt := e.(*Dirt); isDirt {
+				dirtID = d.ID()
+				break
+			}
+		}
+		farm.Commit()
+		farm.resources.Corn = 1
+
+		farm.PlantPumpkin(PlantPumpkinCmd{FarmID: farm.ID(), DirtID: dirtID, Timestamp: time.Now()})
+
+		events := farm.UncommittedEvents()
+		assert.Equal(t, 1, len(events))
+		_, isPumpkinPlantedEvt := events[0].(PumpkinPlantedEvt)
+		assert.True(t, isPumpkinPlantedEvt)
 	})
 }
 

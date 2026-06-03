@@ -18,6 +18,10 @@ var (
 	ErrCornNotFound  = fmt.Errorf("%w: corn not found", apperr.ErrValidation)
 	ErrCornNotReady  = fmt.Errorf("%w: corn not ready", apperr.ErrValidation)
 
+	ErrInvalidPumpkinID = fmt.Errorf("%w: invalid pumpkin id", apperr.ErrValidation)
+	ErrPumpkinNotFound  = fmt.Errorf("%w: pumpkin not found", apperr.ErrValidation)
+	ErrPumpkinNotReady  = fmt.Errorf("%w: pumpkin not ready", apperr.ErrValidation)
+
 	ErrInvalidGrassID = fmt.Errorf("%w: invalid grass id", apperr.ErrValidation)
 	ErrGrassNotFound  = fmt.Errorf("%w: grass not found", apperr.ErrValidation)
 	ErrGrassNotReady  = fmt.Errorf("%w: grass not ready", apperr.ErrValidation)
@@ -75,6 +79,19 @@ type GrassHarvestedEvt struct {
 	Timestamp time.Time
 }
 
+type HarvestPumpkinCmd struct {
+	FarmID    domain.ID
+	PumpkinID domain.ID
+	Timestamp time.Time
+}
+
+type PumpkinHarvestedEvt struct {
+	FarmID    domain.ID
+	PumpkinID domain.ID
+	Produced  int
+	Timestamp time.Time
+}
+
 type PlantCornCmd struct {
 	FarmID    domain.ID
 	DirtID    domain.ID
@@ -83,6 +100,19 @@ type PlantCornCmd struct {
 
 type CornPlantedEvt struct {
 	CornID    domain.ID
+	FarmID    domain.ID
+	DirtID    domain.ID
+	Timestamp time.Time
+}
+
+type PlantPumpkinCmd struct {
+	FarmID    domain.ID
+	DirtID    domain.ID
+	Timestamp time.Time
+}
+
+type PumpkinPlantedEvt struct {
+	PumpkinID domain.ID
 	FarmID    domain.ID
 	DirtID    domain.ID
 	Timestamp time.Time

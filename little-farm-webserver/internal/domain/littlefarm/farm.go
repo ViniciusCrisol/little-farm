@@ -135,19 +135,29 @@ func (farm *Farm) HarvestGrass(cmd HarvestGrassCmd) error {
 	return nil
 }
 
-func (farm *Farm) PlantCorn(cmd PlantCornCmd) error {
-	var dirt *Dirt
-	for _, e := range farm.activeElements {
-		if e.ID().Equals(cmd.DirtID) {
-			d, isDirt := e.(*Dirt)
-			if !isDirt {
-				return ErrDirtNotFound
-			}
-			dirt = d
-			break
-		}
+func (farm *Farm) HarvestPumpkin(cmd HarvestPumpkinCmd) error {
+	pumpkin, found := farm.findPumpkinByID(cmd.PumpkinID)
+	if !found {
+		return ErrPumpkinNotFound
 	}
-	if dirt == nil {
+	produced, err := pumpkin.Harvest()
+	if err != nil {
+		return err
+	}
+	evt := PumpkinHarvestedEvt{
+		FarmID:    cmd.FarmID,
+		PumpkinID: cmd.PumpkinID,
+		Produced:  produced,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.applyPumpkinHarvestedEvt(evt)
+	farm.Record(evt)
+	return nil
+}
+
+func (farm *Farm) PlantCorn(cmd PlantCornCmd) error {
+	_, found := farm.findDirtByID(cmd.DirtID)
+	if !found {
 		return ErrDirtNotFound
 	}
 	if farm.resources.Corn < 1 {
@@ -166,18 +176,8 @@ func (farm *Farm) PlantCorn(cmd PlantCornCmd) error {
 }
 
 func (farm *Farm) PlantWheat(cmd PlantWheatCmd) error {
-	var dirt *Dirt
-	for _, e := range farm.activeElements {
-		if e.ID().Equals(cmd.DirtID) {
-			d, isDirt := e.(*Dirt)
-			if !isDirt {
-				return ErrDirtNotFound
-			}
-			dirt = d
-			break
-		}
-	}
-	if dirt == nil {
+	_, found := farm.findDirtByID(cmd.DirtID)
+	if !found {
 		return ErrDirtNotFound
 	}
 	if farm.resources.Seeds < 1 {
@@ -195,6 +195,26 @@ func (farm *Farm) PlantWheat(cmd PlantWheatCmd) error {
 	return nil
 }
 
+func (farm *Farm) PlantPumpkin(cmd PlantPumpkinCmd) error {
+	_, found := farm.findDirtByID(cmd.DirtID)
+	if !found {
+		return ErrDirtNotFound
+	}
+	if farm.resources.Corn < 1 {
+		return ErrNotEnoughCornResources
+	}
+
+	evt := PumpkinPlantedEvt{
+		PumpkinID: domain.GenerateID(),
+		FarmID:    cmd.FarmID,
+		DirtID:    cmd.DirtID,
+		Timestamp: cmd.Timestamp,
+	}
+	farm.Record(evt)
+	farm.applyPumpkinPlantedEvt(evt)
+	return nil
+}
+
 func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
 	evt := OneSecondAdvancedEvt{
 		FarmID:    cmd.FarmID,
@@ -203,6 +223,19 @@ func (farm *Farm) AdvanceOneSecond(cmd AdvanceOneSecondCmd) error {
 	farm.applyOneSecondAdvancedEvt(evt)
 	farm.Record(evt)
 	return nil
+}
+
+func (farm *Farm) findDirtByID(id domain.ID) (Dirt, bool) {
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(id) {
+			d, isDirt := e.(*Dirt)
+			if !isDirt {
+				return Dirt{}, false
+			}
+			return *d, true
+		}
+	}
+	return Dirt{}, false
 }
 
 func (farm *Farm) findCornByID(id domain.ID) (Corn, bool) {
@@ -229,6 +262,19 @@ func (farm *Farm) findGrassByID(id domain.ID) (Grass, bool) {
 		}
 	}
 	return Grass{}, false
+}
+
+func (farm *Farm) findPumpkinByID(id domain.ID) (Pumpkin, bool) {
+	for _, e := range farm.activeElements {
+		if e.ID().Equals(id) {
+			p, isPumpkin := e.(*Pumpkin)
+			if !isPumpkin {
+				return Pumpkin{}, false
+			}
+			return *p, true
+		}
+	}
+	return Pumpkin{}, false
 }
 
 func (farm *Farm) applyFarmCreatedEvt(evt FarmCreatedEvt) {
@@ -268,6 +314,19 @@ func (farm *Farm) applyGrassHarvestedEvt(evt GrassHarvestedEvt) {
 	farm.updatedAt = evt.Timestamp
 }
 
+func (farm *Farm) applyPumpkinHarvestedEvt(evt PumpkinHarvestedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.PumpkinID) {
+			farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+			d := NewDirt(domain.GenerateID(), e.XPosition(), e.YPosition())
+			farm.activeElements = append(farm.activeElements, &d)
+			break
+		}
+	}
+	farm.resources.Corn += evt.Produced
+	farm.updatedAt = evt.Timestamp
+}
+
 func (farm *Farm) applyCornPlantedEvt(evt CornPlantedEvt) {
 	for i, e := range farm.activeElements {
 		if e.ID().Equals(evt.DirtID) {
@@ -297,6 +356,22 @@ func (farm *Farm) applyWheatPlantedEvt(evt WheatPlantedEvt) {
 		}
 	}
 	farm.resources.Seeds--
+	farm.updatedAt = evt.Timestamp
+}
+
+func (farm *Farm) applyPumpkinPlantedEvt(evt PumpkinPlantedEvt) {
+	for i, e := range farm.activeElements {
+		if e.ID().Equals(evt.DirtID) {
+			d, isDirt := e.(*Dirt)
+			if isDirt {
+				farm.activeElements = append(farm.activeElements[:i], farm.activeElements[i+1:]...)
+				p := NewPumpkin(evt.PumpkinID, d.XPosition(), d.YPosition())
+				farm.activeElements = append(farm.activeElements, &p)
+				break
+			}
+		}
+	}
+	farm.resources.Corn--
 	farm.updatedAt = evt.Timestamp
 }
 
